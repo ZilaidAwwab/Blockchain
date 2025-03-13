@@ -9,7 +9,7 @@ public class Util {
     public static String applySha256(String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            // Applying sha-256 to our input, it produces a 256 bit sequence of 0s and 1s
+            // Applying sha-256 to our input, it produces a 256 bit sequence
             byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
             // This will hold hash as hexadecimal
             StringBuilder hexString = new StringBuilder();
