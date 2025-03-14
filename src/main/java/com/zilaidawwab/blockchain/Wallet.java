@@ -4,19 +4,26 @@
 
 package com.zilaidawwab.blockchain;
 
+import java.lang.reflect.Array;
 import java.security.*;
 import java.security.spec.ECGenParameterSpec;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Wallet {
 
     public PrivateKey privateKey;
     public PublicKey publicKey;
 
+    // The UTXOs owned by this wallet
+    public HashMap<String, TransactionOutput> UTXOs = new HashMap<String, TransactionOutput>();
+
     public Wallet() {
         generateKeyPair();
     }
 
-    private void generateKeyPair() {
+    public void generateKeyPair() {
         try {
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("ECDSA", "BC");
             SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
@@ -30,5 +37,44 @@ public class Wallet {
         } catch (Exception e) {
             throw new RuntimeException();
         }
+    }
+
+    // returns balance and stores UTXOs owned by this wallet in this.UTXOs
+    public float getBalance() {
+        float total = 0;
+        for (Map.Entry<String, TransactionOutput> item : Blockchain.UTXOs.entrySet()) {
+            TransactionOutput UTXO = item.getValue();
+            if (UTXO.isMine(publicKey)) { // if output belongs to me (if coin belongs to me)
+                UTXOs.put(UTXO.id, UTXO); // add it to our list of unspent transactions
+                total += UTXO.value;
+            }
+        }
+        return total;
+    }
+
+    // generates and returns a new transaction from this wallet
+    public Transaction sendFunds(PublicKey _recipient, float value) {
+        if (getBalance() < value) { // gather balance and check funds
+            System.out.println("Not enough balance to send transaction. Request Denied!");
+            return null;
+        }
+
+        // create array list of inputs
+        ArrayList<TransactionInput> inputs = new ArrayList<TransactionInput>();
+        float total = 0;
+        for (Map.Entry<String, TransactionOutput> item : UTXOs.entrySet()) {
+            TransactionOutput UTXO = item.getValue();
+            total += UTXO.value;
+            inputs.add(new TransactionInput(UTXO.id));
+            if (total > value) break;
+        }
+
+        Transaction newTransaction = new Transaction(publicKey, _recipient, value, inputs);
+        newTransaction.generateSignature(privateKey);
+
+        for (TransactionInput input : inputs) {
+            UTXOs.remove(input.transactionOutputId);
+        }
+        return newTransaction;
     }
 }
